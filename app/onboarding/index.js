@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import OnboardingSlide from './OnboardingSlide';
 
-const {width} = Dimensions.get=('window');
+const {width} = Dimensions.get('window');
 
 const slides = [
 {
