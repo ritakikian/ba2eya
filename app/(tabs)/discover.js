@@ -1,131 +1,121 @@
-import { Compass, Heart, MapPin, Search, User } from 'lucide-react-native';
-import { FlatList, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Heart } from 'lucide-react-native';
+import {
+  FlatList,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-const STORES = [
-    {id: '1',
-        name: 'Dunkin Donuts - Bliss Street, Hamra...',
-        image: require('../../assets/images/store1.png'),
-        rating: '4.4',
-        distance: '1.6 km',
-        time: '04:30 PM - 05:00 PM',
-        originalPrice: '$12.00',
-        price: '$8.00',
-        left: '5+ left'
-    },
-    {id: '2',
-        name: 'Dunkin Donuts - Bliss Street, Hamra...',
-        image: require('../../assets/images/store1.png'),
-        rating: '4.4',
-        distance: '1.6 km',
-        time: '04:30 PM - 05:00 PM',
-        originalPrice: '$12.00',
-        price: '$8.00',
-        left: '5+ left'
-    },
-];
+import { useRouter } from 'expo-router';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { db } from '../../lib/firebase';
 
-const StoreCard = ({item}) => (
-    <TouchableOpacity style={styles.card}>
-        <View>
-            <Image source={{uri: item.image}} style={styles.cardImage} />
-            <View style={styles.badgeLeft}><Text style={styles.badgeText}>{item.left}</Text></View>
+const StoreCard = ({ item }) => {
+  const router = useRouter();
+
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => router.push(`/store/${item.id}`)}
+    >
+      <Image source={{ uri: item.image }} style={styles.cardImage} />
+
+      <View style={styles.badgeLeft}>
+        <Text style={styles.badgeText}>{item.quantityLeft} left</Text>
+      </View>
+
       <View style={styles.ratingBadge}>
         <Text style={styles.ratingText}>⭐ {item.rating}</Text>
       </View>
-    </View>
-    <View style={styles.cardContent}>
-      <View style={styles.titleRow}>
-        <Text numberOfLines={1} style={styles.cardTitle}>{item.name}</Text>
-        <Heart size={20} color="#666" />
-      </View>
-      <Text style={styles.cardSub}>Pick up today: {item.time} | {item.distance}</Text>
-      
-      <View style={styles.priceDivider} />
-      
-      <View style={styles.priceRow}>
-        <Text style={styles.dynamicPrice}>✨ Dynamic price</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.oldPrice}>{item.originalPrice}</Text>
-          <Text style={styles.newPrice}>{item.price}</Text>
-        </View>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
 
-const SmallCard = ({item}) => (
-    <TouchableOpacity style={styles.smallCard}>
-        <View style={styles.smallCardImageContainer}>
-            <Image source={item.image} style={styles.smallCardImage} />
-        <View style={styles.smallLogoCircle}>
-            <Image source={item.logo} style={styles.smallBrandLogo} />
+      <View style={styles.cardContent}>
+        <View style={styles.titleRow}>
+          <Text numberOfLines={1} style={styles.cardTitle}>
+            {item.storeName}
+          </Text>
+          <Heart size={20} color="#666" />
         </View>
-    </View>
-    <Text style={styles.smallCardTitle}>{item.name}</Text>
-    <Text style={styles.smallCardSub}>{item.distance}</Text>
-  </TouchableOpacity>
-);
+
+        <Text style={styles.cardSub}>
+          Pick up today: {item.pickupStart} – {item.pickupEnd}
+        </Text>
+
+        <View style={styles.priceDivider} />
+
+        <View style={styles.priceRow}>
+          <Text style={styles.dynamicPrice}>✨ Dynamic price</Text>
+          <View style={styles.priceContainer}>
+            <Text style={styles.oldPrice}>${item.originalPrice}</Text>
+            <Text style={styles.newPrice}>${item.price}</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
 
 export default function Discover() {
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.locationContainer}>
-          <MapPin size={18} color="#FF7F50" fill="#FF7F50" />
-          <Text style={styles.locationLabel}> Chosen location </Text>
-          <Text numberOfLines={1} style={styles.locationText}>Bliss Street, Rue 202, Beirut, ...</Text>
-          <Text> ⌄ </Text>
-        </View>
-      </View>
+  const [bags, setBags] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const q = query(
+          collection(db, 'surpriseBags'),
+          where('isAvailable', '==', true)
+        );
+
+        const snapshot = await getDocs(q);
+        const results = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setBags(results);
+      } catch (error) {
+        console.error('Error fetching bags:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={{ textAlign: 'center', marginTop: 40 }}>
+          Loading...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recommended for you</Text>
-          <TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
         </View>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={STORES}
-          renderItem={({ item }) => <StoreCard item={item} />}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{ paddingLeft: 16 }}
-        />
 
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>Save before it's too late</Text>
-          <TouchableOpacity><Text style={styles.seeAll}>See all</Text></TouchableOpacity>
-        </View>
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={[...STORES].reverse()}
+          data={bags}
           renderItem={({ item }) => <StoreCard item={item} />}
           keyExtractor={item => item.id}
           contentContainerStyle={{ paddingLeft: 16 }}
         />
       </ScrollView>
-
-      <View style={styles.bottomTab}>
-        <View style={styles.tabItem}>
-          <Compass size={24} color="#FF7F50" />
-          <Text style={[styles.tabText, { color: '#FF7F50' }]}>Discover</Text>
-        </View>
-        <View style={styles.tabItem}>
-          <Search size={24} color="#999" />
-          <Text style={styles.tabText}>Browse</Text>
-        </View>
-        <View style={styles.tabItem}>
-          <Heart size={24} color="#999" />
-          <Text style={styles.tabText}>Favorites</Text>
-        </View>
-        <View style={styles.tabItem}>
-          <User size={24} color="#999" />
-          <Text style={styles.tabText}>Profile</Text>
-        </View>
-      </View>
     </SafeAreaView>
-    );
+  );
 }
 
 const styles = StyleSheet.create({
